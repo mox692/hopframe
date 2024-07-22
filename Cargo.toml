@@ -1,0 +1,21 @@
+[package]
+name = "hopframe"
+version = "0.1.0"
+edition = "2021"
+license = "MIT/Apache-2.0"
+
+[dependencies]
+framehop = "0.12"
+wholesym = "0.7"
+
+[features]
+
+[dev-dependencies]
+tokio = { version = "1.38.0", features = ["full"] } # Feature "macros" for #[tokio::test]
+criterion = "0.5.1"
+backtrace = "0.3"
+
+[[bench]]
+name = "framehop_vs_backtrace"
+path = "benches/framehop_vs_backtrace.rs"
+harness = false
