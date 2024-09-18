@@ -120,27 +120,30 @@ impl SymbolMapBuilder {
 }
 
 #[cfg(target_os = "linux")]
-pub fn read_aslr_offset() -> Result<u64, std::io::Error> {
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
+pub fn read_aslr_offset() -> procfs::ProcResult<u64> {
+    use procfs::process::{MMapPath, Process};
 
-    let path = "/proc/self/maps";
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let mut start_address: u64 = 0;
+    let process = Process::myself()?;
+    let exe = process.exe()?;
+    let maps = &process.maps()?;
+    let mut addresses: Vec<u64> = maps
+        .iter()
+        .filter_map(|map| {
+            let MMapPath::Path(bin_path) = &map.pathname else {
+                return None;
+            };
+            if bin_path != &exe {
+                return None;
+            }
 
-    // Maps file looks like this.
-    // We want to get `55f229ade000` in the example below.
-    //
-    // 55f229ade000-55f229bcc000 r--p 00000000 103:05 405068 /home/user/work/...
-    // 55f229bcc000-55f22a6ec000 r-xp 000ee000 103:05 405068 /home/user/work/...
-    // 55f22a6ec000-55f22aa46000 r--p 00c0e000 103:05 405068 /home/user/work/...
-    if let Some(Ok(line)) = reader.lines().next() {
-        if let Some(hex_str) = line.split('-').next() {
-            let address = u64::from_str_radix(hex_str, 16).expect("Failed to convert hex to u64");
-            start_address = address;
-        }
+            return Some(map.address.0);
+        })
+        .collect();
+
+    addresses.sort();
+    if let Some(addr) = addresses.get(0) {
+        Ok(*addr)
+    } else {
+        panic!("no memory map error.")
     }
-
-    Ok(start_address)
 }
