@@ -5,6 +5,8 @@ edition = "2021"
 license = "MIT/Apache-2.0"
 
 [dependencies]
+framehop = { version = "0.13", default-features = false, features = ["std"] }
+wholesym = { git = "https://github.com/mox692/samply.git", branch = "fix-samply-symbols-compile-error" }
 [target.'cfg(target_os = "linux")'.dependencies]
 procfs = "0.16"
 
