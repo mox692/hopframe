@@ -9,7 +9,7 @@ use framehop::{
     x86_64::{CacheX86_64, UnwindRegsX86_64, UnwinderX86_64},
     FrameAddress, Unwinder,
 };
-use std::arch::asm;
+use std::{arch::asm, path::Path};
 pub use wholesym::{LookupAddress, SymbolManager, SymbolManagerConfig, SymbolMap};
 
 /// load libraries, configure cache or unwinder, etc.
@@ -98,24 +98,35 @@ impl<'a> Iterator for UnwindIterator<'a> {
 }
 
 /// Builder for [`SymbolMap`].
-pub struct SymbolMapBuilder {}
-impl SymbolMapBuilder {
+pub struct SymbolMapBuilder<'a> {
+    binary_path: Option<&'a Path>,
+}
+impl<'a> SymbolMapBuilder<'a> {
     pub fn new() -> Self {
-        Self {}
+        Self { binary_path: None }
+    }
+
+    pub fn with_binary_path(mut self, binary_path: &'a Path) -> Self {
+        self.binary_path = Some(binary_path);
+        self
     }
 
     pub async fn build(self) -> SymbolMap {
         let config = SymbolManagerConfig::default();
         let symbol_manager = SymbolManager::with_config(config);
-
-        let path = std::env::current_exe().unwrap();
-
-        let symbol_map: SymbolMap = symbol_manager
-            .load_symbol_map_for_binary_at_path(&path, None)
-            .await
-            .unwrap();
-
-        symbol_map
+        if self.binary_path.is_some() {
+            symbol_manager
+                .load_symbol_map_for_binary_at_path(&self.binary_path.unwrap(), None)
+                .await
+                .unwrap()
+        } else {
+            let path = std::env::current_exe().unwrap();
+            let path = path.as_path();
+            symbol_manager
+                .load_symbol_map_for_binary_at_path(path, None)
+                .await
+                .unwrap()
+        }
     }
 }
 
