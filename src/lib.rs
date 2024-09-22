@@ -10,6 +10,8 @@ use framehop::{
     FrameAddress, Unwinder,
 };
 use std::{arch::asm, path::Path};
+
+#[cfg(feature = "symbolize")]
 pub use wholesym::{LookupAddress, SymbolManager, SymbolManagerConfig, SymbolMap};
 
 /// load libraries, configure cache or unwinder, etc.
@@ -98,9 +100,11 @@ impl<'a> Iterator for UnwindIterator<'a> {
 }
 
 /// Builder for [`SymbolMap`].
+#[cfg(feature = "symbolize")]
 pub struct SymbolMapBuilder<'a> {
     binary_path: Option<&'a Path>,
 }
+#[cfg(feature = "symbolize")]
 impl<'a> SymbolMapBuilder<'a> {
     pub fn new() -> Self {
         Self { binary_path: None }
