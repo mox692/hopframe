@@ -9,7 +9,7 @@ use framehop::{
     x86_64::{CacheX86_64, UnwindRegsX86_64, UnwinderX86_64},
     FrameAddress, Unwinder,
 };
-use std::{arch::asm, path::Path};
+use std::arch::asm;
 
 #[cfg(feature = "symbolize")]
 pub use wholesym::{LookupAddress, SymbolManager, SymbolManagerConfig, SymbolMap};
