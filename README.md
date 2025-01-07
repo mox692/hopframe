@@ -32,7 +32,7 @@ async fn main() {
 You need to use `RUSTFLAGS="-C force-frame-pointers=yes"` flag.
 
 ```shell
-$ RUSTFLAGS="-C force-frame-pointers=yes" cargo run --examples basic
+$ RUSTFLAGS="-C force-frame-pointers=yes" cargo run --example basic
 
 
 frame: InstructionPointer(94006149978623) symbol: Some("hopframe::StackUnwinderX86_64::unwind")

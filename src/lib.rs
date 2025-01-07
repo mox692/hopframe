@@ -9,7 +9,6 @@ use framehop::{
     x86_64::{CacheX86_64, UnwindRegsX86_64, UnwinderX86_64},
     FrameAddress, Unwinder,
 };
-use std::path::Path;
 use std::arch::asm;
 
 #[cfg(feature = "symbolize")]
