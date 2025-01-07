@@ -1,6 +1,8 @@
+#![cfg(target_os = "linux")]
+
 use backtrace::Backtrace;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use hopframe::{read_aslr_offset, LookupAddress, SymbolMapBuilder, UnwindBuilderX86_64};
+use hopframe::symbolize::{LookupAddress, SymbolMapBuilder, UnwindBuilderX86_64};
 use std::time::Instant;
 use tokio::runtime::Runtime;
 
@@ -95,6 +97,34 @@ fn runtime() -> Runtime {
         .enable_time()
         .build()
         .unwrap()
+}
+
+fn read_aslr_offset() -> procfs::ProcResult<u64> {
+    use procfs::process::{MMapPath, Process};
+
+    let process = Process::myself()?;
+    let exe = process.exe()?;
+    let maps = &process.maps()?;
+    let mut addresses: Vec<u64> = maps
+        .iter()
+        .filter_map(|map| {
+            let MMapPath::Path(bin_path) = &map.pathname else {
+                return None;
+            };
+            if bin_path != &exe {
+                return None;
+            }
+
+            return Some(map.address.0);
+        })
+        .collect();
+
+    addresses.sort();
+    if let Some(addr) = addresses.get(0) {
+        Ok(*addr)
+    } else {
+        panic!("no memory map error.")
+    }
 }
 
 criterion_group!(
