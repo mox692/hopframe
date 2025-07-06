@@ -5,8 +5,11 @@
     unreachable_pub
 )]
 
-// #[cfg(feature = "symbolize")]
-// pub mod symbolize;
+#[cfg(all(
+    feature = "symbolize",
+    any(target_os = "linux", target_os = "windows", target_os = "macos")
+))]
+pub mod symbolize;
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 pub mod unwinder;
