@@ -5,7 +5,8 @@
     unreachable_pub
 )]
 
-#[cfg(feature = "symbolize")]
-pub mod symbolize;
+// #[cfg(feature = "symbolize")]
+// pub mod symbolize;
 
+#[cfg(target_arch = "x86_64")]
 pub mod unwinder;

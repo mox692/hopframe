@@ -5,6 +5,7 @@ use framehop::{
 use std::arch::asm;
 
 /// load libraries, configure cache or unwinder, etc.
+#[derive(Default)]
 pub struct UnwindBuilderX86_64 {}
 
 impl UnwindBuilderX86_64 {
@@ -23,11 +24,6 @@ impl UnwindBuilderX86_64 {
         }
     }
 }
-impl Default for UnwindBuilderX86_64 {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 pub struct StackUnwinderX86_64 {
     cache: CacheX86_64,
@@ -36,7 +32,7 @@ pub struct StackUnwinderX86_64 {
 }
 
 impl StackUnwinderX86_64 {
-    pub fn unwind<'a>(&'a mut self) -> UnwindIterator<'a> {
+    pub fn unwind(&mut self) -> UnwindIterator<'_> {
         #[allow(unused)]
         let (rip, regs) = {
             let mut rip = 0;
@@ -58,26 +54,20 @@ impl StackUnwinderX86_64 {
     }
 }
 
+pub type UnwindIteratorX86_64<'a> = framehop::UnwindIterator<
+    'a,
+    'a,
+    'a,
+    UnwinderX86_64<Vec<u8>>,
+    Box<dyn FnMut(u64) -> Result<u64, ()>>,
+>;
+
 pub struct UnwindIterator<'a> {
-    inner: framehop::UnwindIterator<
-        'a,
-        'a,
-        'a,
-        UnwinderX86_64<Vec<u8>>,
-        Box<dyn FnMut(u64) -> Result<u64, ()>>,
-    >,
+    inner: UnwindIteratorX86_64<'a>,
 }
 
 impl<'a> UnwindIterator<'a> {
-    fn new(
-        inner: framehop::UnwindIterator<
-            'a,
-            'a,
-            'a,
-            UnwinderX86_64<Vec<u8>>,
-            Box<dyn FnMut(u64) -> Result<u64, ()>>,
-        >,
-    ) -> Self {
+    fn new(inner: UnwindIteratorX86_64<'a>) -> Self {
         Self { inner }
     }
 }
