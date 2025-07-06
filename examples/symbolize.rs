@@ -16,7 +16,7 @@ async fn main() {
     let mut iter = unwinder.unwind();
 
     // To simbolize propery, we get aslr offset.
-    let aslr_offset = read_aslr_offset();
+    let aslr_offset = read_aslr_offset().unwrap();
     while let Some(frame) = iter.next() {
         // Get symbol for each frame.
         let symbol = symbol_map

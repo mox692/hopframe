@@ -2,6 +2,21 @@ use std::path::Path;
 
 pub use wholesym::{LookupAddress, SymbolManager, SymbolManagerConfig, SymbolMap};
 
+/// Error type for symbolization operations
+#[derive(Debug)]
+pub enum Error {
+    /// Failed to access process information
+    ProcessAccessError(String),
+    /// Failed to read executable path
+    ExecutablePathError(String),
+    /// Failed to read memory maps
+    MemoryMapError(String),
+    /// No memory mapping found for the executable
+    NoMemoryMapping,
+    /// Platform-specific error
+    PlatformError(String),
+}
+
 /// Builder for [`SymbolMap`].
 pub struct SymbolMapBuilder<'a> {
     binary_path: Option<&'a Path>,
@@ -39,18 +54,24 @@ impl<'a> SymbolMapBuilder<'a> {
     feature = "symbolize",
     any(target_os = "linux", target_os = "windows", target_os = "macos")
 ))]
-pub fn read_aslr_offset() -> u64 {
+pub fn read_aslr_offset() -> Result<u64, Error> {
     imp::_read_aslr_offset()
 }
 
 #[cfg(target_os = "linux")]
 mod imp {
-    pub(super) fn _read_aslr_offset() -> u64 {
+    use super::Error;
+    
+    pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
         use procfs::process::{MMapPath, Process};
 
-        let process = Process::myself().unwrap();
-        let exe = process.exe().unwrap();
-        let maps = &process.maps().unwrap();
+        let process = Process::myself()
+            .map_err(|e| Error::ProcessAccessError(format!("Failed to access process: {}", e)))?;
+        let exe = process.exe()
+            .map_err(|e| Error::ExecutablePathError(format!("Failed to get executable path: {}", e)))?;
+        let maps = process.maps()
+            .map_err(|e| Error::MemoryMapError(format!("Failed to read memory maps: {}", e)))?;
+        
         let mut addresses: Vec<u64> = maps
             .iter()
             .filter_map(|map| {
@@ -66,37 +87,51 @@ mod imp {
             .collect();
 
         addresses.sort();
-        if let Some(addr) = addresses.get(0) {
-            Ok(*addr)
-        } else {
-            panic!("no memory map error.")
-        }
+        addresses.first()
+            .copied()
+            .ok_or(Error::NoMemoryMapping)
     }
 }
 
 #[cfg(target_os = "macos")]
 mod imp {
+    use super::Error;
+    
     extern "C" {
         fn _dyld_get_image_vmaddr_slide(image_index: u32) -> isize;
     }
 
-    pub(super) fn _read_aslr_offset() -> u64 {
+    pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
         // image_index = 0 is your main executable
-        unsafe { _dyld_get_image_vmaddr_slide(0) as u64 }
+        // Note: _dyld_get_image_vmaddr_slide returns 0 if the image doesn't exist,
+        // but for index 0 (main executable) it should always exist
+        let slide = unsafe { _dyld_get_image_vmaddr_slide(0) };
+        Ok(slide as u64)
     }
 }
 
 #[cfg(target_os = "windows")]
 mod imp {
-    pub(super) fn _read_aslr_offset() -> u64 {
+    use super::Error;
+    use winapi::um::libloaderapi::GetModuleHandleW;
+    use std::ptr::null_mut;
+    
+    pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
         use winapi::um::winnt::{IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64};
+        
         let base = GetModuleHandleW(null_mut()) as usize;
-        // DOS header is at base
-        let dos = &*(base as *const IMAGE_DOS_HEADER);
-        // NT headers live at base + e_lfanew
-        let nth = &*((base + dos.e_lfanew as usize) as *const IMAGE_NT_HEADERS64);
-        let preferred = nth.OptionalHeader.ImageBase as usize;
-        // slide = actual – preferred
-        (base - preferred) as u64
+        if base == 0 {
+            return Err(Error::PlatformError("Failed to get module handle".to_string()));
+        }
+        
+        unsafe {
+            // DOS header is at base
+            let dos = &*(base as *const IMAGE_DOS_HEADER);
+            // NT headers live at base + e_lfanew
+            let nth = &*((base + dos.e_lfanew as usize) as *const IMAGE_NT_HEADERS64);
+            let preferred = nth.OptionalHeader.ImageBase as usize;
+            // slide = actual – preferred
+            Ok((base - preferred) as u64)
+        }
     }
 }
