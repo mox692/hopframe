@@ -1,20 +1,22 @@
 //! Basic usage.
-#![cfg(target_os = "linux")]
 
-#[cfg(feature = "symbolize")]
+#[cfg(all(
+    feature = "symbolize",
+    any(target_os = "linux", target_os = "windows", target_os = "macos")
+))]
 #[tokio::main]
 async fn main() {
-    use hopframe::symbolize::{LookupAddress, SymbolMapBuilder};
-    use hopframe::unwinder::UnwindBuilderX86_64;
+    use hopframe::symbolize::{read_aslr_offset, LookupAddress, SymbolMapBuilder};
+    use hopframe::unwinder::UnwindBuilder;
 
     let symbol_map = SymbolMapBuilder::new().build().await;
-    let mut unwinder = UnwindBuilderX86_64::new().build();
+    let mut unwinder = UnwindBuilder::new().build();
 
     // Unwinding.
     let mut iter = unwinder.unwind();
 
     // To simbolize propery, we get aslr offset.
-    let aslr_offset = read_aslr_offset().unwrap();
+    let aslr_offset = read_aslr_offset();
     while let Some(frame) = iter.next() {
         // Get symbol for each frame.
         let symbol = symbol_map
@@ -30,36 +32,10 @@ async fn main() {
     }
 }
 
-pub fn read_aslr_offset() -> procfs::ProcResult<u64> {
-    use procfs::process::{MMapPath, Process};
-
-    let process = Process::myself()?;
-    let exe = process.exe()?;
-    let maps = &process.maps()?;
-    let mut addresses: Vec<u64> = maps
-        .iter()
-        .filter_map(|map| {
-            let MMapPath::Path(bin_path) = &map.pathname else {
-                return None;
-            };
-            if bin_path != &exe {
-                return None;
-            }
-
-            return Some(map.address.0);
-        })
-        .collect();
-
-    addresses.sort();
-    if let Some(addr) = addresses.get(0) {
-        Ok(*addr)
-    } else {
-        panic!("no memory map error.")
-    }
-}
-
-#[cfg(not(feature = "symbolize"))]
-#[tokio::main]
-async fn main() {
-    compile_error!("`symbolize` feature is required to execute this examples.");
+#[cfg(not(all(
+    feature = "symbolize",
+    any(target_os = "linux", target_os = "windows", target_os = "macos")
+)))]
+fn main() {
+    compile_error!("Symbolization is not enabled, or the target OS is not supported.");
 }
