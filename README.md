@@ -1,16 +1,16 @@
 ## hopframe
 A simple, easy wrapper for [framehop](https://github.com/mstange/framehop).
-Currently available for linux only.
+Currently available for linux only, supporting x86_64 and aarch64 architectures.
 
 ## Usage
 Here is a basic usage:
 ```rust
-use hopframe::{read_aslr_offset, LookupAddress, SymbolMapBuilder, UnwindBuilderX86_64};
+use hopframe::{read_aslr_offset, LookupAddress, SymbolMapBuilder, UnwindBuilder};
 
 #[tokio::main]
 async fn main() {
     let symbol_map = SymbolMapBuilder::new().build().await;
-    let mut unwinder = UnwindBuilderX86_64::new().build();
+    let mut unwinder = UnwindBuilder::new().build();
     let mut iter = unwinder.unwind();
     let aslr_offset = read_aslr_offset().unwrap();
 
