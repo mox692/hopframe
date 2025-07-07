@@ -6,17 +6,68 @@ on:
   pull_request:
 
 jobs:
-  cargo-check:
-    runs-on: ubuntu-latest
-
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [
+          ubuntu-latest,
+          macos-latest
+          # TODO: Enable Windows testing when the `symbolize` feature is stable
+          # windows-latest
+        ]
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: setup rust
-        uses: actions-rs/toolchain@v1
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests run with all features
+        run: |
+          cargo nextest run --all-features
+        env:
+          RUSTFLAGS: -C force-frame-pointers=yes
+
+  # TODO: Enable cross-test when the `symbolize` feature is stable
+  cross-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # - target: aarch64-unknown-linux-gnu
+          #   os: ubuntu-22.04-arm 
+          # - target: aarch64-pc-windows-msvc
+          #   os: windows-11-arm
+          - target: aarch64-apple-darwin
+            os: macos-15
+          - target: x86_64-apple-darwin
+            os: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+          target: ${{ matrix.target }}
 
-      - name: cargo check を実行
-        run: cargo check --workspace --all-features
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+          qemu: '7.2'
+
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests run without symbolize feature
+        run: |
+          cargo nextest run --all-features --target ${{ matrix.target }}
+        env:
+          RUSTFLAGS: -C force-frame-pointers=yes
