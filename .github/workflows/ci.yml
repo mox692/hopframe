@@ -6,44 +6,68 @@ on:
   pull_request:
 
 jobs:
-  cargo-check:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests run with all features
+        run: |
+          cargo nextest run --all-features
+        env:
+          RUSTFLAGS: -C force-frame-pointers=yes
+
+  cross-test:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          # Linux
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-          # macOS
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          # Windows
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-    
-    runs-on: ${{ matrix.os }}
-
+          - target: armv5te-unknown-linux-gnueabi
+            os: ubuntu-latest
+          - target: armv5te-unknown-linux-gnueabi
+            os: macos-latest
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-22.04-arm
+          - target: armv7-unknown-linux-gnueabihf
+            os: macos-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          - target: aarch64-unknown-linux-gnu
+            os: macos-latest
+          - target: aarch64-pc-windows-msvc
+            os: windows-11-arm
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-      - name: setup rust
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           target: ${{ matrix.target }}
-          override: true
 
-      - name: Install cross-compilation tools for Linux ARM64
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+          qemu: '7.2'
+
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests run with all features (including parking_lot)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-
-      - name: cargo check を実行
-        run: cargo test --workspace --all-features --target ${{ matrix.target }}
+          cargo nextest run --all-features --target ${{ matrix.target }}
+        env:
+          RUSTFLAGS: -C force-frame-pointers=yes
