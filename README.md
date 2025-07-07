@@ -50,3 +50,12 @@ frame: ReturnAddress(94006147746145) symbol: Some("std::sys_common::backtrace::_
 frame: ReturnAddress(94006149464100) symbol: Some("std::rt::lang_start::{{closure}}")
 frame: ReturnAddress(94006159644801) symbol: Some("std::rt::lang_start_internal")
 ```
+
+
+# Platform Support
+
+| OS      | aarch64 | x86_64 |
+| ------- | ------- | ------ |
+| linux   | ❌       | ✅      |
+| windows | ❌       | ❌      |
+| macos   | ✅       | ✅      |
