@@ -61,17 +61,19 @@ pub fn read_aslr_offset() -> Result<u64, Error> {
 #[cfg(target_os = "linux")]
 mod imp {
     use super::Error;
-    
+
     pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
         use procfs::process::{MMapPath, Process};
 
         let process = Process::myself()
             .map_err(|e| Error::ProcessAccessError(format!("Failed to access process: {}", e)))?;
-        let exe = process.exe()
-            .map_err(|e| Error::ExecutablePathError(format!("Failed to get executable path: {}", e)))?;
-        let maps = process.maps()
+        let exe = process.exe().map_err(|e| {
+            Error::ExecutablePathError(format!("Failed to get executable path: {}", e))
+        })?;
+        let maps = process
+            .maps()
             .map_err(|e| Error::MemoryMapError(format!("Failed to read memory maps: {}", e)))?;
-        
+
         let mut addresses: Vec<u64> = maps
             .iter()
             .filter_map(|map| {
@@ -87,50 +89,43 @@ mod imp {
             .collect();
 
         addresses.sort();
-        addresses.first()
-            .copied()
-            .ok_or(Error::NoMemoryMapping)
+        addresses.first().copied().ok_or(Error::NoMemoryMapping)
     }
 }
 
 #[cfg(target_os = "macos")]
 mod imp {
     use super::Error;
-    
+
     extern "C" {
         fn _dyld_get_image_vmaddr_slide(image_index: u32) -> isize;
-        fn _dyld_get_image_header(image_index: u32) -> *const u8;
     }
 
     pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
         // image_index = 0 is your main executable
-        // Get the actual base address of the main executable
-        let header = unsafe { _dyld_get_image_header(0) };
-        
-        if header.is_null() {
-            return Err(Error::PlatformError("Failed to get image header".to_string()));
-        }
-        
-        // Return the base address of the main executable
-        // This matches the Linux behavior where we return the base address
-        Ok(header as u64)
+        // Note: _dyld_get_image_vmaddr_slide returns 0 if the image doesn't exist,
+        // but for index 0 (main executable) it should always exist
+        let slide = unsafe { _dyld_get_image_vmaddr_slide(0) };
+        Ok(slide as u64)
     }
 }
 
 #[cfg(target_os = "windows")]
 mod imp {
     use super::Error;
-    use winapi::um::libloaderapi::GetModuleHandleW;
     use std::ptr::null_mut;
-    
+    use winapi::um::libloaderapi::GetModuleHandleW;
+
     pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
         use winapi::um::winnt::{IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64};
-        
-        let base = GetModuleHandleW(null_mut()) as usize;
+
+        let base = unsafe { GetModuleHandleW(null_mut()) as usize };
         if base == 0 {
-            return Err(Error::PlatformError("Failed to get module handle".to_string()));
+            return Err(Error::PlatformError(
+                "Failed to get module handle".to_string(),
+            ));
         }
-        
+
         unsafe {
             // DOS header is at base
             let dos = &*(base as *const IMAGE_DOS_HEADER);
