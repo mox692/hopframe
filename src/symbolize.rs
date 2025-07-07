@@ -99,14 +99,21 @@ mod imp {
     
     extern "C" {
         fn _dyld_get_image_vmaddr_slide(image_index: u32) -> isize;
+        fn _dyld_get_image_header(image_index: u32) -> *const u8;
     }
 
     pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
         // image_index = 0 is your main executable
-        // Note: _dyld_get_image_vmaddr_slide returns 0 if the image doesn't exist,
-        // but for index 0 (main executable) it should always exist
-        let slide = unsafe { _dyld_get_image_vmaddr_slide(0) };
-        Ok(slide as u64)
+        // Get the actual base address of the main executable
+        let header = unsafe { _dyld_get_image_header(0) };
+        
+        if header.is_null() {
+            return Err(Error::PlatformError("Failed to get image header".to_string()));
+        }
+        
+        // Return the base address of the main executable
+        // This matches the Linux behavior where we return the base address
+        Ok(header as u64)
     }
 }
 
