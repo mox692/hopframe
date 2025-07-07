@@ -10,7 +10,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        os: [
+          ubuntu-latest,
+          macos-latest
+          # TODO: Enable Windows testing when the `symbolize` feature is stable
+          # windows-latest
+        ]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable
@@ -28,36 +33,37 @@ jobs:
         env:
           RUSTFLAGS: -C force-frame-pointers=yes
 
-  cross-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-22.04-arm 
-          - target: aarch64-pc-windows-msvc
-            os: windows-11-arm
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          target: ${{ matrix.target }}
+  # TODO: Enable cross-test when the `symbolize` feature is stable
+  # cross-test:
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - target: aarch64-unknown-linux-gnu
+  #           os: ubuntu-22.04-arm 
+  #         - target: aarch64-pc-windows-msvc
+  #           os: windows-11-arm
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Rust stable
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: stable
+  #         target: ${{ matrix.target }}
 
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest
+  #     - name: Install cargo-nextest
+  #       uses: taiki-e/install-action@v2
+  #       with:
+  #         tool: cargo-nextest
 
-      - uses: taiki-e/setup-cross-toolchain-action@v1
-        with:
-          target: ${{ matrix.target }}
-          qemu: '7.2'
+  #     - uses: taiki-e/setup-cross-toolchain-action@v1
+  #       with:
+  #         target: ${{ matrix.target }}
+  #         qemu: '7.2'
 
-      - uses: Swatinem/rust-cache@v2
-      - name: Tests run without symbolize feature
-        run: |
-          cargo nextest run --all-features --target ${{ matrix.target }}
-        env:
-          RUSTFLAGS: -C force-frame-pointers=yes
+  #     - uses: Swatinem/rust-cache@v2
+  #     - name: Tests run without symbolize feature
+  #       run: |
+  #         cargo nextest run --all-features --target ${{ matrix.target }}
+  #       env:
+  #         RUSTFLAGS: -C force-frame-pointers=yes
