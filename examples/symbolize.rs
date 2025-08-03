@@ -1,5 +1,4 @@
 //! Basic usage.
-
 #[cfg(all(
     feature = "symbolize",
     any(target_os = "linux", target_os = "windows", target_os = "macos")

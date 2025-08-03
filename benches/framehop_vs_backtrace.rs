@@ -1,5 +1,3 @@
-// #![cfg(target_os = "linux")]
-
 // use backtrace::Backtrace;
 // use criterion::{black_box, criterion_group, criterion_main, Criterion};
 // use hopframe::symbolize::{LookupAddress, SymbolMapBuilder, UnwindBuilderX86_64};
@@ -135,3 +133,5 @@
 //     unwind_framehop
 // );
 // criterion_main!(framehop_vs_backtrace);
+
+fn main() {}

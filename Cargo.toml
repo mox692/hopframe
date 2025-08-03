@@ -12,11 +12,12 @@ wholesym = { git = "https://github.com/mox692/samply.git", branch = "fix-samply-
 winapi = { version = "0.3.9", features = ["libloaderapi", "winnt"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-procfs = "0.16"
+procfs = { version = "0.16", optional = true }
 
 [features]
+# TODO: fix
 default = []
-symbolize = ["wholesym"]
+symbolize = ["dep:wholesym", "dep:procfs"]
 
 [dev-dependencies]
 tokio = { version = "1.38.0", features = ["full"] } # Feature "macros" for #[tokio::test]
