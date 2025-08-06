@@ -7,7 +7,7 @@ rust-version = "1.70"
 
 [dependencies]
 framehop = { version = "0.13", default-features = false, features = ["std"] }
-wholesym = { git = "https://github.com/mox692/samply.git", branch = "fix-samply-symbols-compile-error", optional = true }
+wholesym = { version = "0.8.1", optional = true }
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi = { version = "0.3.9", features = ["libloaderapi", "winnt"] }
 
@@ -15,7 +15,6 @@ winapi = { version = "0.3.9", features = ["libloaderapi", "winnt"] }
 procfs = { version = "0.16", optional = true }
 
 [features]
-# TODO: fix
 default = []
 symbolize = ["dep:wholesym", "dep:procfs"]
 
