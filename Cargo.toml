@@ -3,6 +3,8 @@ name = "hopframe"
 version = "0.1.0"
 edition = "2021"
 license = "MIT/Apache-2.0"
+description = "A simple, easy wrapper for framehop"
+repository = "https://github.com/mox692/hopframe"
 rust-version = "1.70"
 
 [dependencies]
