@@ -6,6 +6,12 @@
 )]
 
 #[cfg(all(
+    feature = "aslr",
+    any(target_os = "linux", target_os = "windows", target_os = "macos")
+))]
+pub mod aslr;
+
+#[cfg(all(
     feature = "symbolize",
     any(target_os = "linux", target_os = "windows", target_os = "macos")
 ))]

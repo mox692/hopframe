@@ -16,6 +16,7 @@ windows-sys = { version = "0.59", features = ["Win32_System_LibraryLoader", "Win
 [features]
 default = []
 symbolize = ["dep:wholesym"]
+aslr = []
 
 [dev-dependencies]
 tokio = { version = "1.38.0", features = ["full"] } # Feature "macros" for #[tokio::test]
