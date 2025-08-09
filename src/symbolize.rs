@@ -114,10 +114,10 @@ mod imp {
 mod imp {
     use super::Error;
     use std::ptr::null_mut;
-    use winapi::um::libloaderapi::GetModuleHandleW;
+    use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 
     pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
-        use winapi::um::winnt::{IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64};
+        use windows_sys::Win32::System::SystemServices::{IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64};
 
         let base = unsafe { GetModuleHandleW(null_mut()) as usize };
         if base == 0 {
