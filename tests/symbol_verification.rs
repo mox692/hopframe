@@ -5,7 +5,8 @@
 
 mod common;
 
-use hopframe::symbolize::{read_aslr_offset, LookupAddress, SymbolMapBuilder};
+use hopframe::aslr::read_aslr_offset;
+use hopframe::symbolize::{LookupAddress, SymbolMapBuilder};
 use hopframe::unwinder::UnwindBuilder;
 use std::collections::HashSet;
 

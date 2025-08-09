@@ -5,7 +5,8 @@
 ))]
 #[tokio::main]
 async fn main() {
-    use hopframe::symbolize::{read_aslr_offset, LookupAddress, SymbolMapBuilder};
+    use hopframe::aslr::read_aslr_offset;
+    use hopframe::symbolize::{LookupAddress, SymbolMapBuilder};
     use hopframe::unwinder::UnwindBuilder;
 
     let symbol_map = SymbolMapBuilder::new().build().await;
