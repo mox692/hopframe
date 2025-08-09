@@ -61,35 +61,45 @@ pub fn read_aslr_offset() -> Result<u64, Error> {
 #[cfg(target_os = "linux")]
 mod imp {
     use super::Error;
+    use std::{
+        fs::File,
+        io::{BufRead, BufReader},
+        path::PathBuf,
+    };
 
     pub(super) fn _read_aslr_offset() -> Result<u64, Error> {
-        use procfs::process::{MMapPath, Process};
+        // Resolve our real path once to avoid repeated allocations.
+        let exe: PathBuf = std::fs::read_link("/proc/self/exe")
+            .map_err(|e| Error::ExecutablePathError(format!("readlink failed: {e}")))?;
 
-        let process = Process::myself()
-            .map_err(|e| Error::ProcessAccessError(format!("Failed to access process: {}", e)))?;
-        let exe = process.exe().map_err(|e| {
-            Error::ExecutablePathError(format!("Failed to get executable path: {}", e))
-        })?;
-        let maps = process
-            .maps()
-            .map_err(|e| Error::MemoryMapError(format!("Failed to read memory maps: {}", e)))?;
+        let file = File::open("/proc/self/maps")
+            .map_err(|e| Error::MemoryMapError(format!("open maps: {e}")))?;
+        let reader = BufReader::new(file);
 
-        let mut addresses: Vec<u64> = maps
-            .iter()
-            .filter_map(|map| {
-                let MMapPath::Path(bin_path) = &map.pathname else {
-                    return None;
-                };
-                if bin_path != &exe {
-                    return None;
+        let mut addrs: Vec<u64> = Vec::new();
+
+        for line in reader.lines() {
+            let line = line.map_err(|e| Error::MemoryMapError(format!("read maps: {e}")))?;
+            // Example line:
+            // 55b63ea4c000-55b63ea6e000 r-xp 00000000 fd:01 123456 /usr/bin/myapp
+            let mut parts = line.split_whitespace();
+            let range = parts
+                .next()
+                .ok_or_else(|| Error::MemoryMapError("malformed maps line".into()))?;
+            let pathname = parts.nth(4); // skip perms, offset, dev, inode
+
+            // Only interested in the executable’s own mapping.
+            if pathname.map(|p| PathBuf::from(p) == exe).unwrap_or(false) {
+                if let Some(start_hex) = range.split('-').next() {
+                    let addr = u64::from_str_radix(start_hex, 16)
+                        .map_err(|_| Error::MemoryMapError("invalid addr".into()))?;
+                    addrs.push(addr);
                 }
+            }
+        }
 
-                return Some(map.address.0);
-            })
-            .collect();
-
-        addresses.sort();
-        addresses.first().copied().ok_or(Error::NoMemoryMapping)
+        addrs.sort_unstable();
+        addrs.first().copied().ok_or(Error::NoMemoryMapping)
     }
 }
 
